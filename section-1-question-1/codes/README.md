@@ -28,8 +28,8 @@ This measures agent business activity intensity in the HDB resale market.
 
 ## How to run
 
-1. Place the two CSV files in a folder named `data/`.
-2. Open `codes/q1_hdb_agent_impact.ipynb`.
+1. Place the two CSV files in `data/`.
+2. Open `q1_hdb_agent_impact.ipynb`.
 3. Run all cells.
 4. Outputs will be saved to `outputs/`.
 
