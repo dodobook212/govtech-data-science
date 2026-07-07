@@ -28,35 +28,35 @@ new or previously failed. This step requires internet access.
 
 ## Method summary
 
-1. **Demand definition** — population data is by single year of age, so
+1. **Demand definition**: population data is by single year of age, so
    demand for children aged 18 months-6 years is approximated as
    `0.5 x Age 1 + Age 2 + Age 3 + Age 4 + Age 5 + Age 6` (half of the age-1
    cohort, since roughly the second half of that year is 18-24 months).
-2. **Historical panel** — population census editions from 2000-2025 are
+2. **Historical panel**: population census editions from 2000-2025 are
    cleaned, concatenated, and aggregated into a subzone x year demand panel.
    Subzone names that don't exist in the most recent census (i.e. subzones
    that were renamed/merged/dissolved between Master Plan editions) are
-   dropped — see "Data quality notes" below.
-3. **Forward-looking features** — BTO project completions (lagged 1-3 years,
+   dropped. See "Data quality notes" below.
+3. **Forward-looking features**: BTO project completions (lagged 1-3 years,
    converted to an assumed child count via `BTO_CHILD_FACTOR = 0.12`) and
    national birth/fertility rates are added as features.
-4. **Three forecasting models** — Linear Regression, Prophet, and XGBoost are
+4. **Three forecasting models**: Linear Regression, Prophet, and XGBoost are
    backtested on 2021-2025 with a proper walk-forward split (retrained per
    test year using only prior data). The model with the lowest RMSE
    (XGBoost) is selected for the final 2026-2030 forecast.
-5. **Supply estimation** — the ECDA centre listing is geocoded (postal code →
+5. **Supply estimation**: the ECDA centre listing is geocoded (postal code to
    lat/lon via OneMap) and spatially joined to URA subzone polygons. Each
    centre is assumed to hold 100 children (per the problem statement).
    Three supply scenarios test sensitivity to how `KN` (kindergarten) and
    `NA` (unlabelled service model) centres are treated.
-6. **Gap and priority ranking** — for each subzone, `shortfall = forecast
+6. **Gap and priority ranking**: for each subzone, `shortfall = forecast
    demand - estimated capacity`, `additional centres needed = ceil(shortfall
    / 100)`. Subzones are ranked by additional centres needed, then shortfall
    size, then BTO-driven demand pressure.
-7. **Tool prototype** — a Streamlit app (`outputs/streamlit_app.py`) reads
+7. **Tool prototype**: a Streamlit app (`outputs/streamlit_app.py`) reads
    the generated CSVs and lets ECDA staff browse the priority ranking and
    supply-scenario sensitivity by year.
-8. **Presentation charts** — five PNGs for the management deck:
+8. **Presentation charts**: five PNGs for the management deck.
    `06_demand_trend_national.png` (historical + forecast demand trend),
    `07_demand_heatmap_planning_area.png` (demand by planning area x year),
    `08_top_priority_subzones_bar.png` (top 15 priority subzones, 2026),
@@ -75,23 +75,20 @@ Best backtest model: **XGBoost** (RMSE ≈ 75, vs. 270 for Linear and 354 for
 Prophet, on 1,660 held-out subzone-year predictions from 2021-2025).
 
 Top priority subzones for 2026 include Tampines North, Punggol Matilda,
-Yishun East, Bukit Batok Brickworks, and Sengkang Fernvale — see
+Yishun East, Bukit Batok Brickworks, and Sengkang Fernvale. See
 `outputs/top_priority_subzones.csv` for the full ranked list per year, and
 `outputs/scenario_summary.csv` for how the gap changes under the
 `strict_childcare` / `base_preschool` / `broad_all` supply assumptions.
 
 ## Data quality notes
 
-A few data-quality issues turned out to matter enough for the numbers that
-they're worth calling out explicitly rather than leaving as implicit code:
-
 1. **The 2000-2020 population sheet doubled every historical figure before
    2021.** The Excel source reports each (planning area, subzone, age) row
    three ways under `Sex`: `Males`, `Females`, and a `Total` row that's just
    the other two added together. The 2021-2025 CSVs only ever have `Males`
    and `Females`. Summing across all `Sex` values without excluding `Total`
-   meant every year from 2000-2020 was counted twice over — invisible in any
-   of the summary tables, but obvious the moment historical demand is
+   meant every year from 2000-2020 was counted twice over. That's invisible
+   in any of the summary tables, but obvious the moment historical demand is
    plotted as a trend: national demand looked like it fell off a cliff from
    ~420,000 in 2020 to ~210,000 in 2021, a 2x drop with no demographic
    explanation. Fixed by keeping only `Males`/`Females` rows before
@@ -106,7 +103,7 @@ they're worth calling out explicitly rather than leaving as implicit code:
    get revised periodically. Some subzone names only present in the older
    sheets (e.g. "Sengkang - Sungei Serangoon West") don't exist in the
    current census at all. Left unfiltered, these deprecated subzones still
-   get forecasted from decade-old data and can dominate the output — in an
+   get forecasted from decade-old data and can dominate the output. In an
    early pass, 13 of the top 20 "priority" subzones for 2026 turned out to
    be names that no longer exist, some with a fabricated demand of several
    thousand children and zero real-world supply to compare against. The
@@ -119,16 +116,16 @@ they're worth calling out explicitly rather than leaving as implicit code:
    each subzone's window only ever sees its own history. A naive
    `shift().rolling()` chained directly off the groupby object silently
    drops back to a global (ungrouped) window and mixes different subzones
-   together near their boundaries — worth watching for if this pipeline
+   together near their boundaries. Worth watching for if this pipeline
    gets extended.
 4. **OneMap rate-limits aggressively** (HTTP 429 after roughly 8 rapid
    requests), so the geocoding step uses retry + exponential backoff, and
-   the cache only remembers postal codes that resolved successfully -
-   otherwise a rate-limited run permanently understates supply for every
+   the cache only remembers postal codes that resolved successfully.
+   Otherwise a rate-limited run permanently understates supply for every
    centre it failed to place, since a bad cache entry would never get
    retried.
 
-## Other things worth knowing (not fixed, by design or for time reasons)
+## Known limitations
 
 - **`BTO_CHILD_FACTOR = 0.12` and the 3-year lag split are unvalidated
   assumptions**, not derived from data. Worth a sensitivity check before
@@ -136,7 +133,7 @@ they're worth calling out explicitly rather than leaving as implicit code:
 - **Priority score weights (`additional_centres_needed * 1000 +
   shortfall_children + bto_demand_addition * 2`) are arbitrary.** They
   produce a reasonable-looking ranking here but aren't derived or
-  sensitivity-tested — treat the ranking as directionally right, not
+  sensitivity-tested. Treat the ranking as directionally right, not
   precise.
 - **A single best model (by aggregate RMSE) is applied to every subzone.**
   Some subzones may forecast better with a different model; per-subzone
@@ -145,10 +142,10 @@ they're worth calling out explicitly rather than leaving as implicit code:
   (e.g. land not yet built out) still won't appear in the forecast, since
   the forecast loop only iterates over subzones with historical demand
   rows. For the tool's stated goal of factoring in "upcoming BTO sites",
-  this is a real gap worth flagging to ECDA — greenfield sites need a
+  this is a real gap worth flagging to ECDA. Greenfield sites need a
   separate demand-seeding rule (e.g. a standard occupancy curve applied to
   BTO unit counts alone).
-- **Centres that fail the postal→subzone spatial join** (e.g. point falls
+- **Centres that fail the postal-to-subzone spatial join** (e.g. point falls
   just outside a polygon boundary) are silently excluded from supply. The
   notebook prints `mapped_rate` so this is visible, but it's not corrected
   for.
@@ -159,7 +156,7 @@ they're worth calling out explicitly rather than leaving as implicit code:
   run monthly/quarterly when ECDA refreshes population stats, centre
   listings, or BTO plans), writing to the same `outputs/` CSVs.
 - The Streamlit app (`outputs/streamlit_app.py`) is a thin read-only layer
-  over those CSVs — run it with:
+  over those CSVs. Run it with:
   ```bash
   cd outputs
   streamlit run streamlit_app.py
