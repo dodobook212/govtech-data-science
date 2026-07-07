@@ -10,4 +10,4 @@ Main dependency list:
 pip install pandas numpy matplotlib scikit-learn jupyter
 ```
 
-Outputs are saved to the `../outputs/` folder (one level above `codes/`).
+Outputs are saved to the `outputs/` folder (same level as the notebook).
