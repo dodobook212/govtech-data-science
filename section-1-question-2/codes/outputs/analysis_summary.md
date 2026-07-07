@@ -1,25 +1,23 @@
-# Section 1 Question 2 - COE Price Prediction & Quota Elasticity
+# COE Price Prediction & Quota Elasticity
 
-## Executive summary
-
-This analysis models COE premiums for Category A and B using auction-level bidding data. The final selected model is **Ridge baseline**, chosen by lowest RMSE on a time-based holdout set.
-
-Holdout performance for the selected model:
+Selected model: Ridge baseline (lowest RMSE on the 2021-2025 time-based holdout).
 
 - MAE: S$4,109
 - RMSE: S$6,460
 - MAPE: 4.0%
-- R²: 0.81
+- R2: 0.81
 
-## Main policy insight
+Quota alone doesn't tell the full story. What the model actually leans on is
+demand pressure - bids received per unit of quota. Add quota while demand
+stays flat and the bid-to-quota ratio drops, which is what pulls predicted
+premiums down in the simulation below.
 
-Quota matters, but it should not be analysed in isolation. A more policy-relevant indicator is **demand pressure**, measured as bids received per available quota. When quota increases while demand is held constant, the bid-to-quota ratio falls, and the model estimates lower premiums.
-
-## Latest-round policy simulation
+Latest-round simulation:
 
 - Category A: baseline predicted premium S$123,183; +100 quota -> S$121,275 (-1,908); +300 quota -> S$116,970 (-6,212).
 - Category B: baseline predicted premium S$124,972; +100 quota -> S$121,976 (-2,996); +300 quota -> S$115,135 (-9,837).
 
-## Important interpretation caveat
-
-This is a model-based sensitivity analysis, not a causal estimate. In reality, announcing more quota may also change bidding behaviour. For a stronger causal estimate, LTA could combine this with quasi-experimental methods around quota announcement shocks.
+Caveat: this is a model-based sensitivity check, not a causal estimate.
+Announcing more quota could itself change bidding behaviour, which this
+setup can't capture. A proper causal read would need something like a
+quasi-experimental design around past quota announcement shocks.

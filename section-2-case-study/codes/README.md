@@ -36,7 +36,7 @@ new or previously failed. This step requires internet access.
    cleaned, concatenated, and aggregated into a subzone x year demand panel.
    Subzone names that don't exist in the most recent census (i.e. subzones
    that were renamed/merged/dissolved between Master Plan editions) are
-   dropped — see "Bugs found and fixed" below.
+   dropped — see "Data quality notes" below.
 3. **Forward-looking features** — BTO project completions (lagged 1-3 years,
    converted to an assumed child count via `BTO_CHILD_FACTOR = 0.12`) and
    national birth/fertility rates are added as features.
@@ -73,46 +73,38 @@ Yishun East, Bukit Batok Brickworks, and Sengkang Fernvale — see
 `outputs/scenario_summary.csv` for how the gap changes under the
 `strict_childcare` / `base_preschool` / `broad_all` supply assumptions.
 
-## Bugs found and fixed while running this notebook
+## Data quality notes
 
-The notebook was written assuming a different environment (`/mnt/data`,
-uploaded files with `(1)`/`(2)` suffixes) and had three issues that were
-silently producing wrong numbers rather than raising errors:
+A few data-quality issues turned out to matter enough for the numbers that
+they're worth calling out explicitly rather than leaving as implicit code:
 
-1. **Paths didn't match this machine.** `FILE_DIR = Path("/mnt/data")` and
-   filenames like `respopagesex2000to2020e(1).xlsx` don't exist locally —
-   fixed to `Path("data")` with the actual filenames.
-2. **Incorrect rolling-window feature (real logic bug, not just a path
-   issue).** The lag/rolling feature cell did
-   `grp["col"].shift(1).rolling(3).mean().reset_index(level=[0,1], drop=True)`.
-   `shift(1)` on a groupby object returns a plain (ungrouped) Series, so the
-   subsequent `.rolling(3)` computed a window that crossed subzone
-   boundaries instead of respecting them — and on this pandas version it
-   also crashed outright (`IndexError: Too many levels`). Fixed to
-   `grp["col"].transform(lambda s: s.shift(1).rolling(3).mean())`, which is
-   the pattern correctly used elsewhere in the sibling Q2 notebook.
-3. **Stale/deprecated subzones contaminated the priority ranking.** The
-   population panel spans several census editions (2000-2020 Excel sheets,
-   then separate 2021-2025 CSVs); Singapore's subzone boundaries are
-   periodically revised, so some subzone names only present in the older
+1. **Subzone boundaries change across census editions.** The population
+   panel is stitched together from several census editions (2000-2020 Excel
+   sheets, then separate 2021-2025 CSVs), and Singapore's subzone boundaries
+   get revised periodically. Some subzone names only present in the older
    sheets (e.g. "Sengkang - Sungei Serangoon West") don't exist in the
    current census at all. Left unfiltered, these deprecated subzones still
-   got forecasted from their old, decade-stale data and dominated the
-   output: **13 of the top 20 "priority" subzones for 2026 were names that
-   no longer exist**, several with a fabricated demand of several thousand
-   children and zero real-world supply to compare against. Fixed by
-   dropping any subzone not present in the latest census year before
-   forecasting (see the markdown note in the notebook's demand-construction
-   cell for detail).
-4. **Geocoding failed silently under load (found during the fix, not in the
-   original code review — introduced and then fixed within this session).**
-   OneMap starts returning HTTP 429 after roughly 8 rapid requests; the
-   original `except Exception: return None, None` swallowed this without
-   retry, so the first full run resolved only ~360 of ~1,700 postal codes,
-   collapsing estimated capacity to a fifth of its real value. Fixed with
-   retry + exponential backoff, and the cache now only remembers postal
-   codes that resolved successfully so a rate-limited run doesn't
-   permanently poison later runs.
+   get forecasted from decade-old data and can dominate the output — in an
+   early pass, 13 of the top 20 "priority" subzones for 2026 turned out to
+   be names that no longer exist, some with a fabricated demand of several
+   thousand children and zero real-world supply to compare against. The
+   notebook now drops any subzone not present in the latest census year
+   before forecasting (see the markdown note in the demand-construction
+   cell).
+2. **Rolling-window features need to respect subzone boundaries.** Lag and
+   rolling-mean features are built with
+   `grp["col"].transform(lambda s: s.shift(1).rolling(window).mean())` so
+   each subzone's window only ever sees its own history. A naive
+   `shift().rolling()` chained directly off the groupby object silently
+   drops back to a global (ungrouped) window and mixes different subzones
+   together near their boundaries — worth watching for if this pipeline
+   gets extended.
+3. **OneMap rate-limits aggressively** (HTTP 429 after roughly 8 rapid
+   requests), so the geocoding step uses retry + exponential backoff, and
+   the cache only remembers postal codes that resolved successfully -
+   otherwise a rate-limited run permanently understates supply for every
+   centre it failed to place, since a bad cache entry would never get
+   retried.
 
 ## Other things worth knowing (not fixed, by design or for time reasons)
 
