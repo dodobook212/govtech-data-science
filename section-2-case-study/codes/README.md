@@ -56,15 +56,22 @@ new or previously failed. This step requires internet access.
 7. **Tool prototype** — a Streamlit app (`outputs/streamlit_app.py`) reads
    the generated CSVs and lets ECDA staff browse the priority ranking and
    supply-scenario sensitivity by year.
+8. **Presentation charts** — five PNGs for the management deck:
+   `06_demand_trend_national.png` (historical + forecast demand trend),
+   `07_demand_heatmap_planning_area.png` (demand by planning area x year),
+   `08_top_priority_subzones_bar.png` (top 15 priority subzones, 2026),
+   `09_shortfall_map_singapore.png` (map of additional centres needed by
+   subzone, 2026), and `10_scenario_sensitivity_line.png` (shortfall under
+   the three supply scenarios).
 
 ## Headline results (this run)
 
 | Year | Forecast demand (children) | Estimated capacity | Shortfall | Additional centres needed | Subzones with shortfall |
 |---|---|---|---|---|---|
-| 2026 | 192,925 | 171,700 | 48,388 | 538 | 116 / 332 |
-| 2030 | 179,140 | 171,700 | 42,281 | 476 | 102 / 332 |
+| 2026 | 195,689 | 171,700 | 49,028 | 645 | 211 / 332 |
+| 2030 | 191,774 | 171,700 | 49,493 | 648 | 212 / 332 |
 
-Best backtest model: **XGBoost** (RMSE ≈ 621, vs. 867 for Linear and 988 for
+Best backtest model: **XGBoost** (RMSE ≈ 75, vs. 270 for Linear and 354 for
 Prophet, on 1,660 held-out subzone-year predictions from 2021-2025).
 
 Top priority subzones for 2026 include Tampines North, Punggol Matilda,
@@ -78,7 +85,22 @@ Yishun East, Bukit Batok Brickworks, and Sengkang Fernvale — see
 A few data-quality issues turned out to matter enough for the numbers that
 they're worth calling out explicitly rather than leaving as implicit code:
 
-1. **Subzone boundaries change across census editions.** The population
+1. **The 2000-2020 population sheet doubled every historical figure before
+   2021.** The Excel source reports each (planning area, subzone, age) row
+   three ways under `Sex`: `Males`, `Females`, and a `Total` row that's just
+   the other two added together. The 2021-2025 CSVs only ever have `Males`
+   and `Females`. Summing across all `Sex` values without excluding `Total`
+   meant every year from 2000-2020 was counted twice over — invisible in any
+   of the summary tables, but obvious the moment historical demand is
+   plotted as a trend: national demand looked like it fell off a cliff from
+   ~420,000 in 2020 to ~210,000 in 2021, a 2x drop with no demographic
+   explanation. Fixed by keeping only `Males`/`Females` rows before
+   aggregating. This didn't change the 2026-2030 forecast much in practice
+   (the model's lag/rolling features draw mostly on 2021+ data), but it
+   did substantially inflate Linear and Prophet's backtest error for 2021 in
+   particular, which the RMSE-based model comparison would have quietly
+   priced in.
+2. **Subzone boundaries change across census editions.** The population
    panel is stitched together from several census editions (2000-2020 Excel
    sheets, then separate 2021-2025 CSVs), and Singapore's subzone boundaries
    get revised periodically. Some subzone names only present in the older
@@ -91,7 +113,7 @@ they're worth calling out explicitly rather than leaving as implicit code:
    notebook now drops any subzone not present in the latest census year
    before forecasting (see the markdown note in the demand-construction
    cell).
-2. **Rolling-window features need to respect subzone boundaries.** Lag and
+3. **Rolling-window features need to respect subzone boundaries.** Lag and
    rolling-mean features are built with
    `grp["col"].transform(lambda s: s.shift(1).rolling(window).mean())` so
    each subzone's window only ever sees its own history. A naive
@@ -99,7 +121,7 @@ they're worth calling out explicitly rather than leaving as implicit code:
    drops back to a global (ungrouped) window and mixes different subzones
    together near their boundaries — worth watching for if this pipeline
    gets extended.
-3. **OneMap rate-limits aggressively** (HTTP 429 after roughly 8 rapid
+4. **OneMap rate-limits aggressively** (HTTP 429 after roughly 8 rapid
    requests), so the geocoding step uses retry + exponential backoff, and
    the cache only remembers postal codes that resolved successfully -
    otherwise a rate-limited run permanently understates supply for every
