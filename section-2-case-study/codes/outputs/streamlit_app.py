@@ -11,7 +11,7 @@ scenario_summary = pd.read_csv("scenario_summary.csv")
 st.title("ECDA Preschool Demand Forecasting Tool")
 
 st.subheader("Model Backtesting Performance")
-st.dataframe(metrics, use_container_width=True)
+st.dataframe(metrics, width="stretch")
 
 year = st.selectbox("Forecast year", sorted(gap["year"].unique()))
 top_n = st.slider("Show top N priority subzones", 10, 100, 30)
@@ -24,10 +24,10 @@ col2.metric("Shortfall children", int(df["shortfall_children"].sum()))
 col3.metric("Additional centres needed", int(df["additional_centres_needed"].sum()))
 
 st.subheader("Priority Ranking")
-st.dataframe(df, use_container_width=True)
+st.dataframe(df, width="stretch")
 
 st.subheader("Supply Scenario Sensitivity")
-st.dataframe(scenario_summary[scenario_summary["year"] == year], use_container_width=True)
+st.dataframe(scenario_summary[scenario_summary["year"] == year], width="stretch")
 
 st.subheader("Additional Centres Needed")
 st.bar_chart(df.set_index("subzone_clean")["additional_centres_needed"])

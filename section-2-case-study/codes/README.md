@@ -14,7 +14,7 @@
 
 1. Create a virtual environment and install dependencies:
    ```bash
-   pip install pandas numpy scikit-learn openpyxl xgboost prophet geopandas shapely pyogrio requests jupyter
+   pip install pandas numpy scikit-learn openpyxl xgboost prophet geopandas shapely pyogrio requests jupyter streamlit
    ```
 2. Place the input files in `data/` (already done in this folder).
 3. Open `ECDA_Preschool_Demand_Forecasting_Final.ipynb` and run all cells.
